@@ -4,6 +4,7 @@ from docx import Document
 import io
 import requests
 from datetime import datetime
+import pyperclip
 
 def create_jira_ticket(api_key, inputs):
     headers = {
