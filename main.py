@@ -4,7 +4,6 @@ from docx import Document
 import io
 import requests
 from datetime import datetime
-import pyperclip
 
 def create_jira_ticket(api_key, inputs):
     headers = {
@@ -46,7 +45,7 @@ def create_jira_ticket(api_key, inputs):
     [1 sentence on timeline]
 
     Anticipated Workflow:
-    [5-7 key steps with rough time estimates]
+    [List 5-7 key steps. IMPORTANT: Total timeline must not exceed 4 weeks. Break down estimates in days or weeks, ensuring the total is between 1-4 weeks maximum]
     """
 
     try:
@@ -56,7 +55,7 @@ def create_jira_ticket(api_key, inputs):
             json={
                 "model": "gpt-4o-mini",
                 "messages": [
-                    {"role": "system", "content": "You are an SEO expert creating concise JIRA tickets. Keep responses brief and focused."},
+                    {"role": "system", "content": "You are an SEO expert creating concise JIRA tickets. Keep responses brief and focused. Ensure all work estimates fall within 1-4 weeks maximum."},
                     {"role": "user", "content": prompt}
                 ],
                 "temperature": 0.7,
@@ -73,10 +72,6 @@ def save_as_docx(content):
         if line.strip():  # Only add non-empty lines
             doc.add_paragraph(line.strip())
     return doc
-
-def copy_to_clipboard(text):
-    pyperclip.copy(text)
-    st.success("Copied to clipboard!")
 
 def main():
     st.title("SEO JIRA Ticket Generator")
@@ -122,28 +117,42 @@ def main():
         with st.spinner("Generating..."):
             ticket_content = create_jira_ticket(api_key, inputs)
             
-            # Store the content in session state
-            st.session_state.ticket_content = ticket_content
+            # Create a unique key for the text area
+            text_area_key = f"ticket_content_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
             
-            st.text_area("Generated Ticket", ticket_content, height=400)
+            st.text_area("Generated Ticket", ticket_content, height=400, key=text_area_key)
             
-            col1, col2 = st.columns(2)
+            # Add JavaScript for clipboard functionality
+            st.markdown("""
+                <script>
+                function copyToClipboard(text) {
+                    navigator.clipboard.writeText(text);
+                }
+                </script>
+                """, unsafe_allow_html=True)
             
-            with col1:
-                if st.button("Copy to Clipboard"):
-                    copy_to_clipboard(ticket_content)
+            # Create a button that triggers JavaScript
+            if st.button("Copy to Clipboard"):
+                js = f"""
+                <script>
+                    navigator.clipboard.writeText(`{ticket_content}`).then(function() {{
+                        alert('Copied to clipboard!');
+                    }});
+                </script>
+                """
+                st.components.v1.html(js, height=0)
+                st.success("Copied to clipboard!")
             
-            with col2:
-                doc = save_as_docx(ticket_content)
-                bio = io.BytesIO()
-                doc.save(bio)
-                
-                st.download_button(
-                    label="Download as Word",
-                    data=bio.getvalue(),
-                    file_name=f"seo_ticket_{datetime.now().strftime('%Y%m%d')}.docx",
-                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                )
+            doc = save_as_docx(ticket_content)
+            bio = io.BytesIO()
+            doc.save(bio)
+            
+            st.download_button(
+                label="Download as Word",
+                data=bio.getvalue(),
+                file_name=f"seo_ticket_{datetime.now().strftime('%Y%m%d')}.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            )
 
 if __name__ == "__main__":
     main()
