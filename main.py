@@ -11,30 +11,38 @@ def create_jira_ticket(api_key, inputs):
         "Content-Type": "application/json"
     }
     
-    prompt = f"""Create a detailed JIRA ticket for SEO work based on the following inputs:
+    prompt = f"""Create a concise JIRA ticket for SEO work based on the following inputs:
     Purpose: {inputs['purpose']}
     Background: {inputs['background']}
     
-    Please format the output following the template below and suggest a detailed workflow with time estimates:
+    Format the response in plain text using this exact structure:
     
-    Purpose: [Enhanced version of user input]
-    
-    Background: [Enhanced version of user input]
-    
-    Definition of Done: [Based on purpose and background]
-    
-    User Persona: [Create appropriate persona]
-    
-    Stakeholders / Dependencies: [Suggest relevant stakeholders]
-    
-    OKRs / Goals: [Suggest alignment with common SEO objectives]
-    
-    Estimated Impact: [Provide realistic estimates]
-    
-    Timeliness / Urgency: [Suggest timeline]
-    
-    Detailed Workflow with Time Estimates:
-    [Provide detailed steps with time estimates]
+    Purpose:
+    [2-3 sentences maximum]
+
+    Background:
+    [2-3 sentences maximum]
+
+    Definition of Done:
+    [3-5 bullet points]
+
+    User Persona:
+    [1-2 sentences describing the end user]
+
+    Stakeholders / Dependencies:
+    [List only key stakeholders, maximum 3]
+
+    OKRs / Goals:
+    [1-2 specific goals]
+
+    Estimated Impact:
+    [1-2 sentences on potential outcomes]
+
+    Timeliness / Urgency:
+    [1 sentence on timeline]
+
+    Anticipated Workflow:
+    [5-7 key steps with rough time estimates]
     """
 
     try:
@@ -44,7 +52,7 @@ def create_jira_ticket(api_key, inputs):
             json={
                 "model": "gpt-4o-mini",
                 "messages": [
-                    {"role": "system", "content": "You are an SEO expert creating detailed JIRA tickets."},
+                    {"role": "system", "content": "You are an SEO expert creating concise JIRA tickets. Keep responses brief and focused."},
                     {"role": "user", "content": prompt}
                 ],
                 "temperature": 0.7,
@@ -58,39 +66,34 @@ def create_jira_ticket(api_key, inputs):
 def save_as_docx(content):
     doc = Document()
     for line in content.split('\n'):
-        doc.add_paragraph(line)
+        if line.strip():  # Only add non-empty lines
+            doc.add_paragraph(line.strip())
     return doc
 
 def main():
     st.title("SEO JIRA Ticket Generator")
     
-    st.markdown("""
-    ### About This Tool
+    st.write("""
+    A tool to generate structured JIRA tickets for SEO work.
     Created by Brandon Lazovic
-    
-    This tool helps generate structured JIRA tickets for SEO work. Simply fill in the basic information,
-    and the AI will help create a detailed ticket with workflow estimates.
     """)
 
-    # API Key input
-    api_key = st.text_input("Enter your OpenAI API Key", type="password")
+    api_key = st.text_input("OpenAI API Key", type="password")
 
-    # Form inputs
     with st.form("jira_ticket_form"):
         purpose = st.text_area(
             "Purpose",
-            help="What is this task?"
+            help="Brief description of the task (1-2 sentences)"
         )
         
         background = st.text_area(
             "Background",
-            help="Additional context for the task"
+            help="Quick context about the task (1-2 sentences)"
         )
         
         urgency = st.selectbox(
-            "Urgency Level",
-            ["Low", "Medium", "High", "Critical"],
-            help="Select the urgency level of this task"
+            "Urgency",
+            ["Low", "Medium", "High", "Critical"]
         )
         
         submitted = st.form_submit_button("Generate Ticket")
@@ -102,24 +105,21 @@ def main():
             "urgency": urgency
         }
         
-        with st.spinner("Generating ticket..."):
+        with st.spinner("Generating..."):
             ticket_content = create_jira_ticket(api_key, inputs)
             
-            st.markdown("### Generated Ticket")
-            st.text_area("Ticket Content", ticket_content, height=400)
+            st.text_area("Generated Ticket", ticket_content, height=400)
             
-            # Copy to clipboard button
             st.button("Copy to Clipboard", on_click=lambda: st.write(ticket_content))
             
-            # Download as Word doc
             doc = save_as_docx(ticket_content)
             bio = io.BytesIO()
             doc.save(bio)
             
             st.download_button(
-                label="Download as Word Document",
+                label="Download as Word",
                 data=bio.getvalue(),
-                file_name=f"seo_ticket_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx",
+                file_name=f"seo_ticket_{datetime.now().strftime('%Y%m%d')}.docx",
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             )
 
