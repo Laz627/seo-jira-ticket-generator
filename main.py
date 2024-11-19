@@ -4,6 +4,7 @@ from docx import Document
 import io
 import requests
 from datetime import datetime
+import pyperclip
 
 def create_jira_ticket(api_key, inputs):
     headers = {
@@ -12,11 +13,14 @@ def create_jira_ticket(api_key, inputs):
     }
     
     prompt = f"""Create a concise JIRA ticket for SEO work based on the following inputs:
+    Title: {inputs['title']}
     Purpose: {inputs['purpose']}
     Background: {inputs['background']}
     
     Format the response in plain text using this exact structure:
     
+    Title: {inputs['title']}
+
     Purpose:
     [2-3 sentences maximum]
 
@@ -70,6 +74,10 @@ def save_as_docx(content):
             doc.add_paragraph(line.strip())
     return doc
 
+def copy_to_clipboard(text):
+    pyperclip.copy(text)
+    st.success("Copied to clipboard!")
+
 def main():
     st.title("SEO JIRA Ticket Generator")
     
@@ -81,6 +89,11 @@ def main():
     api_key = st.text_input("OpenAI API Key", type="password")
 
     with st.form("jira_ticket_form"):
+        title = st.text_input(
+            "JIRA Ticket Title",
+            help="Enter a descriptive title for the JIRA ticket"
+        )
+        
         purpose = st.text_area(
             "Purpose",
             help="Brief description of the task (1-2 sentences)"
@@ -100,6 +113,7 @@ def main():
 
     if submitted and api_key:
         inputs = {
+            "title": title,
             "purpose": purpose,
             "background": background,
             "urgency": urgency
@@ -108,20 +122,28 @@ def main():
         with st.spinner("Generating..."):
             ticket_content = create_jira_ticket(api_key, inputs)
             
+            # Store the content in session state
+            st.session_state.ticket_content = ticket_content
+            
             st.text_area("Generated Ticket", ticket_content, height=400)
             
-            st.button("Copy to Clipboard", on_click=lambda: st.write(ticket_content))
+            col1, col2 = st.columns(2)
             
-            doc = save_as_docx(ticket_content)
-            bio = io.BytesIO()
-            doc.save(bio)
+            with col1:
+                if st.button("Copy to Clipboard"):
+                    copy_to_clipboard(ticket_content)
             
-            st.download_button(
-                label="Download as Word",
-                data=bio.getvalue(),
-                file_name=f"seo_ticket_{datetime.now().strftime('%Y%m%d')}.docx",
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            )
+            with col2:
+                doc = save_as_docx(ticket_content)
+                bio = io.BytesIO()
+                doc.save(bio)
+                
+                st.download_button(
+                    label="Download as Word",
+                    data=bio.getvalue(),
+                    file_name=f"seo_ticket_{datetime.now().strftime('%Y%m%d')}.docx",
+                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                )
 
 if __name__ == "__main__":
     main()
