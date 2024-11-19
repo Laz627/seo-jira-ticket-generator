@@ -4,7 +4,6 @@ from docx import Document
 import io
 import requests
 from datetime import datetime
-import pyperclip
 
 def create_jira_ticket(api_key, inputs):
     headers = {
@@ -118,31 +117,11 @@ def main():
         with st.spinner("Generating..."):
             ticket_content = create_jira_ticket(api_key, inputs)
             
-            # Create a unique key for the text area
-            text_area_key = f"ticket_content_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            st.text_area("Generated Ticket", value=ticket_content, height=400)
             
-            st.text_area("Generated Ticket", ticket_content, height=400, key=text_area_key)
-            
-            # Add JavaScript for clipboard functionality
-            st.markdown("""
-                <script>
-                function copyToClipboard(text) {
-                    navigator.clipboard.writeText(text);
-                }
-                </script>
-                """, unsafe_allow_html=True)
-            
-            # Create a button that triggers JavaScript
-            if st.button("Copy to Clipboard"):
-                js = f"""
-                <script>
-                    navigator.clipboard.writeText(`{ticket_content}`).then(function() {{
-                        alert('Copied to clipboard!');
-                    }});
-                </script>
-                """
-                st.components.v1.html(js, height=0)
-                st.success("Copied to clipboard!")
+            # Using Streamlit's built-in clipboard functionality
+            st.code(ticket_content, language=None)  # This creates a copyable code block
+            st.info("👆 Click the copy button in the top-right corner of the box above to copy the content")
             
             doc = save_as_docx(ticket_content)
             bio = io.BytesIO()
